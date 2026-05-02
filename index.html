@@ -1,1 +1,110 @@
 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kudo-san's Delivery Nav</title>
+    <style>
+        /* 画面全体を地図にするためのスタイル */
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+        }
+        /* 音声認識の状態を表示するインジケーター */
+        #status-bar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 5;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status-bar">
+        状態: <span id="status">音声認識 待機中</span><br>
+        <small>「ズームイン」「ズームアウト」と話してみてください</small>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        let map;
+
+        // 地図の初期化関数
+        function initMap() {
+            // 川越駅付近を初期表示（工藤さんの活動拠点に合わせています）
+            const kawagoe = { lat: 35.907, lng: 139.483 };
+            
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 15,
+                center: kawagoe,
+                mapTypeControl: false, // バイク走行中の誤操作を防ぐためUIはシンプルに
+                streetViewControl: false,
+                fullscreenControl: false
+            });
+
+            // 音声認識のセットアップ
+            setupVoiceRecognition();
+        }
+
+        // 音声認識（Web Speech API）の設定
+        function setupVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                document.getElementById('status').innerText = "お使いのブラウザは音声認識非対応です";
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP';
+            recognition.continuous = true; // 連続して認識
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                document.getElementById('status').innerText = "音声認識中...";
+            };
+
+            recognition.onresult = (event) => {
+                const command = event.results[event.results.length - 1][0].transcript.trim();
+                console.log("認識された言葉:", command);
+
+                // 簡単な音声コマンドの実装例
+                if (command.includes("ズームイン")) {
+                    map.setZoom(map.getZoom() + 1);
+                } else if (command.includes("ズームアウト")) {
+                    map.setZoom(map.getZoom() - 1);
+                } else if (command.includes("現在地")) {
+                    // ここにGPS現在地へ移動する処理を追加可能
+                    alert("現在地へ移動します（実装用サンプル）");
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("音声認識エラー:", event.error);
+                document.getElementById('status').innerText = "エラー: " + event.error;
+            };
+
+            // 認識が途切れたら自動で再開（配達中の利便性のため）
+            recognition.onend = () => {
+                recognition.start();
+            };
+
+            recognition.start();
+        }
+    </script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+</body>
+</html>
